@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Avaliação Completa - T&D</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+      body {
+        font-family: 'Inter', sans-serif;
+      }
+      @media print { 
+        body { 
+          -webkit-print-color-adjust: exact; 
+          print-color-adjust: exact; 
+          background: white;
+          font-size: 12px;
+        }
+        
+        /* Esconde elementos de navegação e botões */
+        .no-print, button, nav, header {
+          display: none !important;
+        }
+
+        /* Garante que o container do relatório ocupe a largura total e permita quebra de página */
+        #relatorio-container {
+          width: 100%;
+          margin: 0;
+          padding: 0;
+          border: none;
+          box-shadow: none;
+          position: relative;
+          display: block;
+        }
+
+        /* Remove scrollbars e limites de altura na impressão */
+        * {
+          overflow: visible !important;
+          height: auto !important;
+        }
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "recharts": "https://aistudiocdn.com/recharts@^3.5.1"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body>
+    <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+</html>
