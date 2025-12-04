@@ -1,5 +1,5 @@
 import React from 'react';
-import { getComportamentos } from '../constants';
+import { getComportamentos } from '../../constants/performance';
 
 interface NivelSelectorProps {
   value: number;

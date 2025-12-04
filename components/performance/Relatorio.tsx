@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
-import { DadosAvaliacao, Notas, GrupoCompetencia } from '../types';
-import { competenciasComportamentais, competenciasTecnicas, competenciasLideranca } from '../constants';
+import { DadosAvaliacao, Notas, GrupoCompetencia } from '../../types/performance';
+import { competenciasComportamentais, competenciasTecnicas, competenciasLideranca } from '../../constants/performance';
 import { RadarChartCustom } from './RadarChartCustom';
 
 interface RelatorioProps {

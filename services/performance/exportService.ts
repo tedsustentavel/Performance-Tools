@@ -1,10 +1,10 @@
-import { DadosAvaliacao, Notas, GrupoCompetencia } from '../types';
+import { DadosAvaliacao, Notas, GrupoCompetencia } from '../../types/performance';
 import { 
   competenciasComportamentais, 
   competenciasTecnicas, 
   competenciasLideranca,
   getComportamentos 
-} from '../constants';
+} from '../../constants/performance';
 import html2pdf from 'html2pdf.js';
 
 export const gerarMarkdown = (dados: DadosAvaliacao, notas: Notas, temLideranca: boolean): string => {

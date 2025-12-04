@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Competencia, Notas } from '../types';
+import { Competencia, Notas } from '../../types/performance';
 import { NivelSelector } from './NivelSelector';
 
 interface CompetenciaCardProps {
