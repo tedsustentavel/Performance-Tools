@@ -1,4 +1,4 @@
-import { DadosAvaliacao, Notas, GrupoCompetencia } from '../../types/performance';
+import { DadosAvaliacao, Notas, GrupoCompetencia, Comentarios, Destaques } from '../../types/performance';
 import { 
   competenciasComportamentais, 
   competenciasTecnicas, 
@@ -7,7 +7,7 @@ import {
 } from '../../constants/performance';
 import html2pdf from 'html2pdf.js';
 
-export const gerarMarkdown = (dados: DadosAvaliacao, notas: Notas, temLideranca: boolean): string => {
+export const gerarMarkdown = (dados: DadosAvaliacao, notas: Notas, comentarios: Comentarios = {}, destaques: Destaques = {}, temLideranca: boolean): string => {
   const { nomeColaborador, cargoColaborador, unidade, nomeGestor, cargoGestor, dataAvaliacao } = dados;
   
   const calcMedia = (comps: GrupoCompetencia) => {
@@ -21,17 +21,18 @@ export const gerarMarkdown = (dados: DadosAvaliacao, notas: Notas, temLideranca:
   const percentual = totalNotas.length > 0 ? (((totalNotas.reduce((a,b) => a+b, 0) / totalNotas.length) - 1) / 4 * 100).toFixed(0) : '0';
 
   // Lógica de Inteligência para Markdown
-  const pontosFortes: { nome: string; nota: number }[] = [];
-  const pontosDesenvolvimento: { nome: string; nota: number }[] = [];
+  const pontosFortes: { nome: string; nota: number; destacado: boolean }[] = [];
+  const pontosDesenvolvimento: { nome: string; nota: number; destacado: boolean }[] = [];
 
   const processarGrupo = (grupo: GrupoCompetencia) => {
     Object.values(grupo).forEach(comp => {
       comp.dimensoes.forEach(dim => {
         const nota = notas[dim.id];
+        const destacado = destaques[dim.id] || false;
         if (nota >= 4) {
-          pontosFortes.push({ nome: dim.nome, nota });
+          pontosFortes.push({ nome: dim.nome, nota, destacado });
         } else if (nota <= 3 && nota > 0) {
-          pontosDesenvolvimento.push({ nome: dim.nome, nota });
+          pontosDesenvolvimento.push({ nome: dim.nome, nota, destacado });
         }
       });
     });
@@ -41,8 +42,15 @@ export const gerarMarkdown = (dados: DadosAvaliacao, notas: Notas, temLideranca:
   processarGrupo(competenciasTecnicas);
   if (temLideranca) processarGrupo(competenciasLideranca);
 
-  pontosDesenvolvimento.sort((a, b) => a.nota - b.nota);
-  pontosFortes.sort((a, b) => b.nota - a.nota);
+  // Ordenar: destacados primeiro, depois por criticidade
+  pontosDesenvolvimento.sort((a, b) => {
+    if (a.destacado !== b.destacado) return a.destacado ? -1 : 1;
+    return a.nota - b.nota;
+  });
+  pontosFortes.sort((a, b) => {
+    if (a.destacado !== b.destacado) return a.destacado ? -1 : 1;
+    return b.nota - a.nota;
+  });
 
   let md = `# 📊 Relatório de Avaliação de Competências\n`;
   md += `## T&D Sustentável\n\n`;
@@ -82,7 +90,10 @@ export const gerarMarkdown = (dados: DadosAvaliacao, notas: Notas, temLideranca:
 
   md += `### 🌟 Destaques e Fortalezas\n`;
   if (pontosFortes.length > 0) {
-    pontosFortes.slice(0, 5).forEach(p => md += `- **${p.nome}** (Nota: ${p.nota})\n`);
+    pontosFortes.slice(0, 5).forEach(p => {
+      const destaqueMark = p.destacado ? ' ⭐' : '';
+      md += `- **${p.nome}**${destaqueMark} (Nota: ${p.nota})\n`;
+    });
   } else {
     md += `_Nenhum destaque (nota 4 ou 5) identificado._\n`;
   }
@@ -90,7 +101,10 @@ export const gerarMarkdown = (dados: DadosAvaliacao, notas: Notas, temLideranca:
 
   md += `### 🚀 Oportunidades de Desenvolvimento\n`;
   if (pontosDesenvolvimento.length > 0) {
-    pontosDesenvolvimento.slice(0, 5).forEach(p => md += `- **${p.nome}** (Nota: ${p.nota})\n`);
+    pontosDesenvolvimento.slice(0, 5).forEach(p => {
+      const destaqueMark = p.destacado ? ' ⭐' : '';
+      md += `- **${p.nome}**${destaqueMark} (Nota: ${p.nota})\n`;
+    });
   } else {
     md += `_Nenhum ponto crítico (nota 1, 2 ou 3) identificado._\n`;
   }
@@ -112,12 +126,14 @@ export const gerarMarkdown = (dados: DadosAvaliacao, notas: Notas, temLideranca:
       const tempComp: GrupoCompetencia = { [comp.nome]: comp };
       const mediaComp = calcMedia(tempComp);
       md += `### ${comp.icon} ${comp.nome} - Média: ${mediaComp}/5.0\n\n`;
-      md += `| Dimensão | Nota | Descrição do Nível Atingido |\n`;
-      md += `|----------|------|-----------------------------|\n`;
+      md += `| Dimensão | Nota | Descrição do Nível Atingido | Comentário |\n`;
+      md += `|----------|------|-----------------------------|------------|\n`;
       comp.dimensoes.forEach(d => {
         const nota = notas[d.id] || '—';
         const desc = nota !== '—' ? getComportamentos(d.id)[nota as number] : 'Não avaliado';
-        md += `| **${d.nome}** | ${nota === '—' ? '—' : `**${nota}**/5`} | ${desc} |\n`;
+        const comentario = comentarios[d.id] || '';
+        const destaqueMark = destaques[d.id] ? ' ⭐' : '';
+        md += `| **${d.nome}**${destaqueMark} | ${nota === '—' ? '—' : `**${nota}**/5`} | ${desc} | ${comentario || '—'} |\n`;
       });
       md += `\n`;
     });
@@ -151,20 +167,38 @@ export const gerarPDF = async (dados: DadosAvaliacao): Promise<void> => {
     throw new Error('Elemento do relatório não encontrado');
   }
 
+  // Adicionar classe especial para PDF
+  elemento.classList.add('generating-pdf');
+  
+  // Aguardar um frame para garantir que os estilos sejam aplicados
+  await new Promise(resolve => requestAnimationFrame(resolve));
+
   const opcoes = {
-    margin: [10, 10, 10, 10],
+    margin: [5, 5, 5, 5],
     filename: `Avaliacao_${dados.nomeColaborador.replace(/\s+/g, '_')}_${dados.dataAvaliacao}.pdf`,
     image: { type: 'jpeg', quality: 0.98 },
     html2canvas: { 
-      scale: 2,
+      scale: 3,
       useCORS: true,
       logging: false,
-      backgroundColor: '#ffffff'
+      backgroundColor: '#ffffff',
+      letterRendering: true,
+      allowTaint: true,
+      windowWidth: elemento.scrollWidth,
+      windowHeight: elemento.scrollHeight,
+      onclone: (clonedDoc: Document) => {
+        // Garantir que todos os estilos sejam aplicados no clone
+        const clonedElement = clonedDoc.getElementById('relatorio-container');
+        if (clonedElement) {
+          clonedElement.classList.add('generating-pdf');
+        }
+      }
     },
     jsPDF: { 
       unit: 'mm', 
       format: 'a4', 
-      orientation: 'portrait' 
+      orientation: 'portrait',
+      compress: true
     },
     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
   };
@@ -174,5 +208,8 @@ export const gerarPDF = async (dados: DadosAvaliacao): Promise<void> => {
   } catch (error) {
     console.error('Erro ao gerar PDF:', error);
     throw new Error('Erro ao gerar PDF. Tente novamente.');
+  } finally {
+    // Remover classe após gerar PDF
+    elemento.classList.remove('generating-pdf');
   }
 };

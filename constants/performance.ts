@@ -281,7 +281,7 @@ export const competenciasTecnicas: GrupoCompetencia = {
     { id: "T1.2", nome: "Atualização e Evolução Técnica", def: "Busca ativa por atualização profissional, aprendizado de novas técnicas e acompanhamento das evoluções da área." },
     { id: "T1.3", nome: "Aplicação e Resolução de Problemas", def: "Capacidade de aplicar conhecimento técnico para resolver problemas reais, diagnosticar causas e encontrar soluções." }
   ]},
-  processos: { nome: "Processos e Sistemas", icon: "📋", cor: "#5AC8FA", dimensoes: [
+  processos: { nome: "Processos\ne\nSistemas", icon: "📋", cor: "#5AC8FA", dimensoes: [
     { id: "T2.1", nome: "Domínio de Processos da Função", def: "Conhecimento dos procedimentos, fluxos e metodologias relacionados à função, executando-os com autonomia." },
     { id: "T2.2", nome: "Uso de ERPs e Sistemas", def: "Domínio das ferramentas tecnológicas e sistemas utilizados na função, navegando com segurança e eficiência." },
     { id: "T2.3", nome: "Ferramentas de Produtividade", def: "Uso eficiente de ferramentas de organização pessoal como agenda, e-mail e gestão de tarefas." },
@@ -292,7 +292,7 @@ export const competenciasTecnicas: GrupoCompetencia = {
     { id: "T3.2", nome: "Eficiência e Produtividade", def: "Velocidade adequada na execução de tarefas sem comprometer qualidade, otimizando tempo e recursos." },
     { id: "T3.3", nome: "Organização do Trabalho", def: "Capacidade de planejar atividades, organizar informações e gerenciar múltiplas demandas de forma estruturada." }
   ]},
-  multiplicacao: { nome: "Multiplicação de Impacto", icon: "🎯", cor: "#AF52DE", dimensoes: [
+  multiplicacao: { nome: "Multiplicação\nde\nImpacto", icon: "🎯", cor: "#AF52DE", dimensoes: [
     { id: "T4.1", nome: "Transferência de Conhecimento", def: "Capacidade de ensinar e desenvolver outros, compartilhando conhecimento de forma clara e acelerando o desenvolvimento da equipe." },
     { id: "T4.2", nome: "Documentação e Melhoria", def: "Documentação de conhecimentos e processos de forma que outros possam utilizar, além de propor melhorias com base na experiência." }
   ]}

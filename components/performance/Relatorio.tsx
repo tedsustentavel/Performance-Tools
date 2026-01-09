@@ -1,17 +1,19 @@
 import React, { useMemo } from 'react';
-import { DadosAvaliacao, Notas, GrupoCompetencia } from '../../types/performance';
+import { DadosAvaliacao, Notas, GrupoCompetencia, Comentarios, Destaques } from '../../types/performance';
 import { competenciasComportamentais, competenciasTecnicas, competenciasLideranca } from '../../constants/performance';
 import { RadarChartCustom } from './RadarChartCustom';
 
 interface RelatorioProps {
   dados: DadosAvaliacao;
   notas: Notas;
+  comentarios?: Comentarios;
+  destaques?: Destaques;
   temLideranca: boolean;
   onExportMD: () => void;
   onExportPDF: () => void;
 }
 
-export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca, onExportMD, onExportPDF }) => {
+export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, comentarios = {}, destaques = {}, temLideranca, onExportMD, onExportPDF }) => {
   const { nomeColaborador, cargoColaborador, unidade, nomeGestor, cargoGestor, dataAvaliacao } = dados;
   
   const calcMedia = (comps: GrupoCompetencia) => {
@@ -37,17 +39,18 @@ export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca
   
   // Lógica de Inteligência do Relatório
   const analiseEspecialista = useMemo(() => {
-    const pontosFortes: { nome: string; nota: number; grupo: string }[] = [];
-    const pontosDesenvolvimento: { nome: string; nota: number; grupo: string }[] = [];
+    const pontosFortes: { nome: string; nota: number; grupo: string; destacado: boolean }[] = [];
+    const pontosDesenvolvimento: { nome: string; nota: number; grupo: string; destacado: boolean }[] = [];
 
     const processarGrupo = (grupo: GrupoCompetencia, nomeGrupo: string) => {
       Object.values(grupo).forEach(comp => {
         comp.dimensoes.forEach(dim => {
           const nota = notas[dim.id];
+          const destacado = destaques[dim.id] || false;
           if (nota >= 4) {
-            pontosFortes.push({ nome: dim.nome, nota, grupo: nomeGrupo });
+            pontosFortes.push({ nome: dim.nome, nota, grupo: nomeGrupo, destacado });
           } else if (nota <= 3 && nota > 0) {
-            pontosDesenvolvimento.push({ nome: dim.nome, nota, grupo: nomeGrupo });
+            pontosDesenvolvimento.push({ nome: dim.nome, nota, grupo: nomeGrupo, destacado });
           }
         });
       });
@@ -57,9 +60,15 @@ export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca
     processarGrupo(competenciasTecnicas, 'Técnica');
     if (temLideranca) processarGrupo(competenciasLideranca, 'Liderança');
 
-    // Ordenar por criticidade
-    pontosDesenvolvimento.sort((a, b) => a.nota - b.nota); // Menores notas primeiro
-    pontosFortes.sort((a, b) => b.nota - a.nota); // Maiores notas primeiro
+    // Ordenar: destacados primeiro, depois por criticidade
+    pontosDesenvolvimento.sort((a, b) => {
+      if (a.destacado !== b.destacado) return a.destacado ? -1 : 1;
+      return a.nota - b.nota; // Menores notas primeiro
+    });
+    pontosFortes.sort((a, b) => {
+      if (a.destacado !== b.destacado) return a.destacado ? -1 : 1;
+      return b.nota - a.nota; // Maiores notas primeiro
+    });
 
     // Texto dinâmico baseado na média geral - TOM FACTUAL
     const media = parseFloat(mediaGeral);
@@ -92,7 +101,7 @@ export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca
     }
 
     return { pontosFortes, pontosDesenvolvimento, textoIntro, tituloPerfil, corPerfil, badgeColor };
-  }, [notas, mediaGeral, temLideranca]);
+  }, [notas, mediaGeral, temLideranca, destaques]);
 
   const radarComportamental = useMemo(() => {
     return Object.entries(competenciasComportamentais).map(([key, comp]) => {
@@ -191,22 +200,31 @@ export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca
           const m = calcMedia({ [k]: comp });
           return (
             <div key={k} className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center">
-                <span className="font-semibold text-gray-700 text-sm flex items-center gap-2">
+              <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center gap-3">
+                <span className="font-semibold text-gray-700 text-sm flex items-center gap-2 whitespace-pre-line flex-1 min-w-0">
                   {comp.icon} {comp.nome}
                 </span>
-                <span className="text-xs bg-white px-2 py-0.5 rounded border border-gray-200 text-gray-500 font-bold">
+                <span className="text-xs bg-white px-2.5 py-1 rounded border border-gray-200 text-gray-500 font-bold flex items-center justify-center min-w-[70px] shrink-0 print-badge">
                   {calcPercentual(m)}% ({m})
                 </span>
               </div>
               <div>
                 {comp.dimensoes.map(dim => {
                   const nota = notas[dim.id];
+                  const comentario = comentarios[dim.id];
+                  const destacado = destaques[dim.id];
                   return (
                     <div key={dim.id} className="p-4 border-b border-gray-50 last:border-0 hover:bg-gray-50/50 transition-colors">
-                      <div className="flex justify-between items-start mb-1">
-                        <span className="text-sm font-medium text-gray-800">{dim.nome}</span>
-                        <span className={`text-xs font-bold px-2 py-1 rounded ml-2 min-w-[30px] text-center ${
+                      <div className="flex justify-between items-center gap-3 mb-1">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <span className="text-sm font-medium text-gray-800">{dim.nome}</span>
+                          {destacado && (
+                            <span className="text-xs bg-yellow-100 w-6 h-6 rounded-full flex items-center justify-center shrink-0 print-badge-star">
+                              ⭐
+                            </span>
+                          )}
+                        </div>
+                        <span className={`text-xs font-bold px-2.5 py-1.5 rounded min-w-[32px] flex items-center justify-center shrink-0 print-badge ${
                            !nota ? 'bg-gray-100 text-gray-400' :
                            nota >= 4 ? 'bg-green-100 text-green-700' :
                            nota === 3 ? 'bg-orange-100 text-orange-700' :
@@ -215,6 +233,11 @@ export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca
                           {nota || '-'}
                         </span>
                       </div>
+                      {comentario && (
+                        <div className="mt-2 p-2 bg-blue-50 rounded-lg border border-blue-100">
+                          <p className="text-xs text-gray-700 italic">{comentario}</p>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -374,10 +397,15 @@ export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca
               {analiseEspecialista.pontosFortes.length > 0 ? (
                 <div className="space-y-3">
                   {analiseEspecialista.pontosFortes.slice(0, 5).map((p, i) => (
-                    <div key={i} className="flex items-center justify-between bg-green-50/50 p-3 rounded-lg border border-green-100">
-                      <div>
-                        <span className="text-xs font-bold text-green-700 uppercase block mb-0.5">{p.grupo}</span>
-                        <span className="text-sm font-medium text-gray-800">{p.nome}</span>
+                    <div key={i} className={`flex items-center justify-between p-3 rounded-lg border ${
+                      p.destacado ? 'bg-yellow-50/50 border-yellow-200' : 'bg-green-50/50 border-green-100'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <span className="text-xs font-bold text-green-700 uppercase block mb-0.5">{p.grupo}</span>
+                          <span className="text-sm font-medium text-gray-800">{p.nome}</span>
+                        </div>
+                        {p.destacado && <span className="text-xs">⭐</span>}
                       </div>
                       <span className="bg-white text-green-700 font-bold text-xs px-2 py-1 rounded shadow-sm">{p.nota}</span>
                     </div>
@@ -398,10 +426,15 @@ export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca
               {analiseEspecialista.pontosDesenvolvimento.length > 0 ? (
                 <div className="space-y-3">
                   {analiseEspecialista.pontosDesenvolvimento.slice(0, 5).map((p, i) => (
-                    <div key={i} className="flex items-center justify-between bg-orange-50/50 p-3 rounded-lg border border-orange-100">
-                      <div>
-                         <span className="text-xs font-bold text-orange-700 uppercase block mb-0.5">{p.grupo}</span>
-                         <span className="text-sm font-medium text-gray-800">{p.nome}</span>
+                    <div key={i} className={`flex items-center justify-between p-3 rounded-lg border ${
+                      p.destacado ? 'bg-yellow-50/50 border-yellow-200' : 'bg-orange-50/50 border-orange-100'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <div>
+                          <span className="text-xs font-bold text-orange-700 uppercase block mb-0.5">{p.grupo}</span>
+                          <span className="text-sm font-medium text-gray-800">{p.nome}</span>
+                        </div>
+                        {p.destacado && <span className="text-xs">⭐</span>}
                       </div>
                       <span className="bg-white text-orange-700 font-bold text-xs px-2 py-1 rounded shadow-sm">{p.nota}</span>
                     </div>
@@ -454,16 +487,165 @@ export const Relatorio: React.FC<RelatorioProps> = ({ dados, notas, temLideranca
       </div>
 
       <style>{`
+        /* Estilos aplicados durante geração de PDF */
+        .generating-pdf * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          color-adjust: exact !important;
+        }
+        
         @media print {
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
+          
           .avoid-break {
             break-inside: avoid;
+            page-break-inside: avoid;
           }
+          
           body {
             background-color: white;
+            margin: 0;
+            padding: 0;
           }
+          
           #relatorio-container {
-             box-shadow: none;
-             max-width: 100%;
+            box-shadow: none;
+            max-width: 100%;
+            margin: 0;
+            padding: 0;
+          }
+          
+          /* Preservar gradientes e cores de fundo */
+          [class*="bg-gradient-to"] {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          /* Preservar todas as cores de fundo */
+          [class*="bg-"] {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          /* Preservar bordas e sombras */
+          [class*="border"], [class*="shadow"] {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          /* Estilos para badges na seção de detalhamento */
+          .print-badge {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            white-space: nowrap !important;
+            flex-shrink: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            line-height: 1 !important;
+          }
+          
+          .print-badge-star {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-sizing: border-box !important;
+            flex-shrink: 0 !important;
+            width: 24px !important;
+            height: 24px !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            line-height: 1 !important;
+          }
+          
+          /* Garantir alinhamento correto dos elementos na seção de detalhamento */
+          .bg-gray-50.px-4.py-2.flex {
+            align-items: center !important;
+            gap: 12px !important;
+          }
+          
+          .p-4.border-b > .flex {
+            align-items: center !important;
+            gap: 12px !important;
+          }
+          
+          /* Garantir que badges não quebrem */
+          .print-badge, .print-badge-star {
+            word-break: keep-all !important;
+            overflow-wrap: normal !important;
+          }
+          
+          /* Garantir que os elementos flex não quebrem */
+          .flex {
+            display: flex !important;
+            box-sizing: border-box !important;
+          }
+          
+          /* Garantir que porcentagens e números não saiam das caixas */
+          [class*="bg-white"], [class*="bg-gray-100"], [class*="bg-green-100"], 
+          [class*="bg-orange-100"], [class*="bg-red-100"], [class*="bg-yellow-100"],
+          [class*="bg-blue-50"], [class*="bg-purple-50"], [class*="bg-gray-50"] {
+            box-sizing: border-box !important;
+            overflow: hidden !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          /* Garantir alinhamento correto dos elementos na seção de detalhamento */
+          .bg-gray-50.px-4.py-2 {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: space-between !important;
+            box-sizing: border-box !important;
+          }
+          
+          .p-4.border-b {
+            display: flex !important;
+            flex-direction: column !important;
+            box-sizing: border-box !important;
+          }
+          
+          .p-4.border-b > .flex {
+            display: flex !important;
+            align-items: flex-start !important;
+            justify-content: space-between !important;
+            width: 100% !important;
+            box-sizing: border-box !important;
+          }
+          
+          /* Preservar espaçamentos */
+          [class*="p-"], [class*="m-"], [class*="gap-"], [class*="space-"] {
+            box-sizing: border-box !important;
+          }
+          
+          /* Preservar grid e layout */
+          [class*="grid"], [class*="flex"] {
+            box-sizing: border-box !important;
+          }
+          
+          /* Garantir que textos não quebrem */
+          h1, h2, h3, h4, h5, h6, p, span, div {
+            orphans: 3;
+            widows: 3;
+          }
+          
+          /* Preservar rounded corners */
+          [class*="rounded"] {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
+          
+          /* Garantir que ícones e emojis sejam renderizados */
+          [class*="text-"] {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
         }
       `}</style>

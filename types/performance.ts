@@ -34,6 +34,14 @@ export interface Notas {
   [dimensaoId: string]: number;
 }
 
+export interface Comentarios {
+  [dimensaoId: string]: string;
+}
+
+export interface Destaques {
+  [dimensaoId: string]: boolean;
+}
+
 export interface Cargo {
   value: string;
   label: string;

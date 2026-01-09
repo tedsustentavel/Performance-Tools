@@ -5,7 +5,7 @@ import {
   competenciasTecnicas, 
   competenciasLideranca 
 } from '../constants/performance';
-import { DadosAvaliacao, Notas, Dimensao } from '../types/performance';
+import { DadosAvaliacao, Notas, Dimensao, Comentarios, Destaques } from '../types/performance';
 import { gerarMarkdown, gerarPDF } from '../services/performance/exportService';
 import { ProgressBar } from '../components/performance/ProgressBar';
 import { Relatorio } from '../components/performance/Relatorio';
@@ -43,9 +43,11 @@ export default function PerformanceApp() {
     dataAvaliacao: new Date().toISOString().split('T')[0] 
   });
   const [notas, setNotas] = useState<Notas>({});
+  const [comentarios, setComentarios] = useState<Comentarios>({});
+  const [destaques, setDestaques] = useState<Destaques>({});
   const [showReport, setShowReport] = useState(false);
   const [showContinueModal, setShowContinueModal] = useState(false);
-  const [savedData, setSavedData] = useState<{ dados: DadosAvaliacao; notas: Notas } | null>(null);
+  const [savedData, setSavedData] = useState<{ dados: DadosAvaliacao; notas: Notas; comentarios?: Comentarios; destaques?: Destaques } | null>(null);
   
   // Estados para modais
   const [modalConfig, setModalConfig] = useState<{
@@ -71,18 +73,18 @@ export default function PerformanceApp() {
 
   useEffect(() => {
     if (step > 0) {
-      const saveData = { dados, notas, timestamp: Date.now() };
+      const saveData = { dados, notas, comentarios, destaques, timestamp: Date.now() };
       localStorage.setItem('avaliacao_rascunho', JSON.stringify(saveData));
     }
-  }, [dados, notas, step]);
+  }, [dados, notas, comentarios, destaques, step]);
 
   useEffect(() => {
     const saved = localStorage.getItem('avaliacao_rascunho');
     if (saved) {
       try {
-        const { dados: savedDados, notas: savedNotas } = JSON.parse(saved);
+        const { dados: savedDados, notas: savedNotas, comentarios: savedComentarios, destaques: savedDestaques } = JSON.parse(saved);
         if (savedDados.nomeColaborador && Object.keys(savedNotas).length > 0) {
-          setSavedData({ dados: savedDados, notas: savedNotas });
+          setSavedData({ dados: savedDados, notas: savedNotas, comentarios: savedComentarios, destaques: savedDestaques });
           setShowContinueModal(true);
         }
       } catch (e) {
@@ -95,6 +97,8 @@ export default function PerformanceApp() {
     if (savedData) {
       setDados(savedData.dados);
       setNotas(savedData.notas);
+      setComentarios(savedData.comentarios || {});
+      setDestaques(savedData.destaques || {});
       setStep(1);
     }
     setShowContinueModal(false);
@@ -197,7 +201,7 @@ export default function PerformanceApp() {
 
   const handleExportMD = () => {
     try {
-      const md = gerarMarkdown(dados, notas, temLideranca);
+      const md = gerarMarkdown(dados, notas, comentarios, destaques, temLideranca);
       const blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -251,6 +255,8 @@ export default function PerformanceApp() {
         localStorage.removeItem('avaliacao_rascunho');
         setDados({ nomeColaborador: '', cargoColaborador: '', unidade: '', nomeGestor: '', cargoGestor: '', dataAvaliacao: new Date().toISOString().split('T')[0] });
         setNotas({});
+        setComentarios({});
+        setDestaques({});
         setStep(0);
         setShowReport(false);
         setCurrentStepIndex(0);
@@ -262,6 +268,8 @@ export default function PerformanceApp() {
     localStorage.removeItem('avaliacao_rascunho');
     setDados({ nomeColaborador: '', cargoColaborador: '', unidade: '', nomeGestor: '', cargoGestor: '', dataAvaliacao: new Date().toISOString().split('T')[0] });
     setNotas({});
+    setComentarios({});
+    setDestaques({});
     setStep(0);
     setShowReport(false);
     setCurrentStepIndex(0);
@@ -272,6 +280,14 @@ export default function PerformanceApp() {
       setNotas(prev => ({ ...prev, [currentStep.dimension!.id]: valor }));
       // Removido o auto-avanço (setTimeout) conforme solicitado
     }
+  };
+
+  const handleComentarioChange = (dimensaoId: string, comentario: string) => {
+    setComentarios(prev => ({ ...prev, [dimensaoId]: comentario }));
+  };
+
+  const handleDestaqueToggle = (dimensaoId: string) => {
+    setDestaques(prev => ({ ...prev, [dimensaoId]: !prev[dimensaoId] }));
   };
 
   const prevStep = () => {
@@ -417,7 +433,7 @@ export default function PerformanceApp() {
                Nova Avaliação
              </button>
            </div>
-          <Relatorio dados={dados} notas={notas} temLideranca={temLideranca} onExportMD={handleExportMD} onExportPDF={handleExportPDF} />
+          <Relatorio dados={dados} notas={notas} comentarios={comentarios} destaques={destaques} temLideranca={temLideranca} onExportMD={handleExportMD} onExportPDF={handleExportPDF} />
         </div>
       </div>
     );
@@ -468,7 +484,11 @@ export default function PerformanceApp() {
                 value={notas[currentStep.dimension.id] || 0} 
                 onChange={handleNotaChange} 
                 cor={currentStep.dimension.competenciaCor} 
-                dimensaoId={currentStep.dimension.id} 
+                dimensaoId={currentStep.dimension.id}
+                comentario={comentarios[currentStep.dimension.id] || ''}
+                onComentarioChange={handleComentarioChange}
+                destacado={destaques[currentStep.dimension.id] || false}
+                onDestaqueToggle={handleDestaqueToggle}
               />
           </div>
         </>
